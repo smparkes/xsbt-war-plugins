@@ -66,14 +66,14 @@ trait EmbedPlugin extends Plugin {
   def embedInScript( embededWarPath: File, slog: Logger): File = {
     slog.debug("Producing self executing file from [" + embededWarPath.absolutePath + "]" )
     val newFileName = embededWarPath.absolutePath.replace(".war","")
-    val cmds = Seq(
-      "/bin/bash echo -e '#!/bin/sh\\n\\nexec java -jar $0 \"${@}\"\\n\\n\\n\\n' > " + newFileName,
-      "/bin/bash cat " + embededWarPath.absolutePath + " >> " + newFileName,
-      "/bin/bash chmod +x " + newFileName
-    )
-    Process.stringSeqToProcess(cmds) !
+
+    val f = new File(newFileName)
+
+    "echo -e #!/bin/sh\\n\\nexec java -jar $0 \\\"${@}\\\"\\n\\n\\n\\n" #> f !;
+    ("cat " + embededWarPath.absolutePath) #>> f !;
+    "chmod +x " + newFileName !;
     
-    new File(newFileName)
+    f
   }
 
 }
