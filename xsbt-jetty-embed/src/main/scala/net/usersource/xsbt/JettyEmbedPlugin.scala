@@ -125,8 +125,9 @@ object TomcatEmbedPlugin extends EmbedPlugin {
       configuration := TomcatEmbed,
       ivyConfigurations += config("tomcatEmbed"),
       embedTomcatPrepare <<= (temporaryWarPath, tomcatEmbeddedStartup, classDirectory in Compile, update, streams) map {
-                        (path,start, cd, report, s) => {
-                          val deps = report.matching(configurationFilter(name = "tomcatEmbed") && artifactFilter(`type` = "jar"))
+                        (path, start, cd, report, s) => {
+                          val deps = report.matching((configurationFilter(name = "tomcat") ||
+                                                      (configurationFilter(name = "tomcatEmbed"))) && artifactFilter(`type` = "jar"))
                           embedTomcatPrepareTask(path, start.get, cd, deps, s.log)
                         }
       },
@@ -194,8 +195,9 @@ object JettyEmbedPlugin extends EmbedPlugin {
       configuration := JettyEmbed,
       ivyConfigurations += config("jettyEmbed"),
       embedJettyPrepare <<= (temporaryWarPath, jettyEmbeddedStartup, classDirectory in Compile, update, streams) map {
-                        (path,start, cd, report, s) => {
-                          val deps = report.matching(configurationFilter(name = "jettyEmbed") && artifactFilter(`type` = "jar"))
+                        (path, start, cd, report, s) => {
+                          val deps = report.matching((configurationFilter(name = "jettyEmbed") ||
+                                                      configurationFilter(name = "jetty")) && artifactFilter(`type` = "jar"))
                           embedJettyPrepareTask(path, start.get, cd, deps, s.log)
                         }
       },
