@@ -1,4 +1,3 @@
-
 package net.usersource.xsbt
 
 import sbt._
@@ -56,9 +55,9 @@ trait EmbedPlugin extends Plugin {
     (warPath).descendentsExcept("*", ".svn") x (relativeTo(warPath)|flat)
   }
 
-  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, tomcatDeps: scala.Seq[File]): Seq[(File, String)] = {
+  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, deps: scala.Seq[File]): Seq[(File, String)] = {
     prepareStartupClass(classDir, startup, log) match {
-      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, tomcatDeps, log)
+      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, deps, log)
       case None => handleNoStartup(startup, log)
     }
   }
@@ -126,8 +125,9 @@ object TomcatEmbedPlugin extends EmbedPlugin {
       configuration := TomcatEmbed,
       ivyConfigurations += config("tomcatEmbed"),
       embedTomcatPrepare <<= (temporaryWarPath, tomcatEmbeddedStartup, classDirectory in Compile, update, streams) map {
-                        (path,start, cd, report, s) => {
-                          val deps = report.matching(configurationFilter(name = "tomcatEmbed") && artifactFilter(`type` = "jar"))
+                        (path, start, cd, report, s) => {
+                          val deps = report.matching((configurationFilter(name = "tomcat") ||
+                                                      (configurationFilter(name = "tomcatEmbed"))) && artifactFilter(`type` = "jar"))
                           embedTomcatPrepareTask(path, start.get, cd, deps, s.log)
                         }
       },
@@ -195,8 +195,9 @@ object JettyEmbedPlugin extends EmbedPlugin {
       configuration := JettyEmbed,
       ivyConfigurations += config("jettyEmbed"),
       embedJettyPrepare <<= (temporaryWarPath, jettyEmbeddedStartup, classDirectory in Compile, update, streams) map {
-                        (path,start, cd, report, s) => {
-                          val deps = report.matching(configurationFilter(name = "jettyEmbed") && artifactFilter(`type` = "jar"))
+                        (path, start, cd, report, s) => {
+                          val deps = report.matching((configurationFilter(name = "jettyEmbed") ||
+                                                      configurationFilter(name = "jetty")) && artifactFilter(`type` = "jar"))
                           embedJettyPrepareTask(path, start.get, cd, deps, s.log)
                         }
       },
