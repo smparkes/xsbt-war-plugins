@@ -1,4 +1,3 @@
-
 package net.usersource.xsbt
 
 import sbt._
@@ -56,9 +55,9 @@ trait EmbedPlugin extends Plugin {
     (warPath).descendentsExcept("*", ".svn") x (relativeTo(warPath)|flat)
   }
 
-  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, tomcatDeps: scala.Seq[File]): Seq[(File, String)] = {
+  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, deps: scala.Seq[File]): Seq[(File, String)] = {
     prepareStartupClass(classDir, startup, log) match {
-      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, tomcatDeps, log)
+      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, deps, log)
       case None => handleNoStartup(startup, log)
     }
   }
