@@ -4,17 +4,11 @@ import sbt._
 import sbt.Keys._
 import sbt.Defaults._
 import sbt.Project.Initialize
-
+import com.github.siasia.WebPlugin.{jettyClasspaths, jettyHome, temporaryWarPath, packageWar}
 
 import sbt.File
 
 trait EmbedPlugin extends Plugin {
-  
-  // these are set by the xsbt-web plugin (https://github.com/siasia/xsbt-web-plugin)
-  val prepareWar = TaskKey[Seq[(File, String)]]("prepare-webapp")
-  val temporaryWarPath = SettingKey[File]("temporary-war-path")
-  val packageWar = TaskKey[File]("package-war")
-
   def prepareStartupClass( classDir: File, className: String, log :Logger ): Option[(File,String)] = {
     val fileName = className.replace('.','/') + ".class"
     val file = new File(classDir, fileName)
@@ -39,7 +33,7 @@ trait EmbedPlugin extends Plugin {
     Seq.empty
   }
 
-  def embedIntoWarPath( warPath: File, startUpFile: File, relPath: String, className: String, deps: Seq[File], log: Logger ) = {
+  def embedIntoWarPath( warPath: File, startUpFile: File, relPath: String, className: String, deps: Seq[File], mappings: Option[Seq[(File,String)]], log: Logger ) = {
     log.debug("Resolves to startup class file [" + startUpFile.absolutePath + "]")
     val dest = warPath / relPath
     IO.copyFile(startUpFile,dest,false)
@@ -51,13 +45,23 @@ trait EmbedPlugin extends Plugin {
       IO.unzip(dep,warPath,filter)
     } }
 
+    mappings match {
+      case None =>
+      case Some(seq) =>
+        log.debug("Embedding mapped dependencies [" + seq + "]")
+        seq.foreach { v =>
+          val (file, path) = v
+          IO.copyFile(file, warPath / path)
+        }
+    }
+
     // TODO: need a better way to get descendents
     (warPath).descendentsExcept("*", ".svn") x (relativeTo(warPath)|flat)
   }
 
-  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, deps: scala.Seq[File]): Seq[(File, String)] = {
+  def embedPrepare(classDir: File, startup: String, log: AbstractLogger, warPath: File, deps: scala.Seq[File], mappings: Option[Seq[(File,String)]]): Seq[(File, String)] = {
     prepareStartupClass(classDir, startup, log) match {
-      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, deps, log)
+      case Some((file: File, relPath: String)) => embedIntoWarPath(warPath, file, relPath, startup, deps, mappings, log)
       case None => handleNoStartup(startup, log)
     }
   }
@@ -94,7 +98,7 @@ object TomcatEmbedPlugin extends EmbedPlugin {
   def embedTomcatPrepareTask(warPath: File, startup: String, classDir: File, tomcatDeps: Seq[File], slog: Logger): Seq[(File, String)] = {
     val log = slog.asInstanceOf[AbstractLogger]
     log.debug("Preparing to embed tomcat into war currently in [" + warPath + "] with [" + startup + "]")
-    embedPrepare(classDir, startup, log, warPath, tomcatDeps)
+    embedPrepare(classDir, startup, log, warPath, tomcatDeps, None)
   }
 
   private def determineStartup = {
@@ -131,7 +135,7 @@ object TomcatEmbedPlugin extends EmbedPlugin {
                           embedTomcatPrepareTask(path, start.get, cd, deps, s.log)
                         }
       },
-      embedTomcatPrepare <<= embedTomcatPrepare dependsOn(prepareWar),
+      embedTomcatPrepare <<= embedTomcatPrepare.identity,
       packageOptions in embedTomcat <<= tomcatEmbeddedStartup map { main: Option[String] => Seq(Package.MainClass(main.get)) },
       artifact in embedTomcat <<= name(n => Artifact(n, "war", "war")),
       libraryDependencies <++= tomcatVersion.apply(determineClasspath(_))
@@ -155,10 +159,10 @@ object JettyEmbedPlugin extends EmbedPlugin {
 
   def embedJettyTask:  Initialize[Task[Seq[(File, String)]]] = embedJettyPrepare map { (e) => e }
 
-  def embedJettyPrepareTask(warPath: File, startup: String, classDir: File, jettyDeps: Seq[File], slog: Logger): Seq[(File, String)] = {
+  def embedJettyPrepareTask(warPath: File, startup: String, classDir: File, jettyDeps: Seq[File], jettyMappings: Option[Seq[(File,String)]], slog: Logger): Seq[(File, String)] = {
     val log = slog.asInstanceOf[AbstractLogger]
     log.debug("Preparing to embed jetty into war currently in [" + warPath + "] with [" + startup + "]")
-    embedPrepare(classDir, startup, log, warPath, jettyDeps)
+    embedPrepare(classDir, startup, log, warPath, jettyDeps, jettyMappings)
   }
 
   private def determineStartup = {
@@ -194,14 +198,31 @@ object JettyEmbedPlugin extends EmbedPlugin {
       jettyEmbeddedStartup <<= determineStartup,
       configuration := JettyEmbed,
       ivyConfigurations += config("jettyEmbed"),
-      embedJettyPrepare <<= (temporaryWarPath, jettyEmbeddedStartup, classDirectory in Compile, update, streams) map {
-                        (path, start, cd, report, s) => {
-                          val deps = report.matching((configurationFilter(name = "jettyEmbed") ||
-                                                      configurationFilter(name = "jetty")) && artifactFilter(`type` = "jar"))
-                          embedJettyPrepareTask(path, start.get, cd, deps, s.log)
-                        }
+      embedJettyPrepare <<=
+      (jettyHome,
+       jettyClasspaths,
+       temporaryWarPath,
+       jettyEmbeddedStartup,
+       classDirectory in Compile,
+       update,
+       streams) map {
+        (home, jcps, path, start, cd, report, s) => {
+          val deps = report.matching((configurationFilter(name = "jettyEmbed") ||
+                                      configurationFilter(name = "jetty"))
+                                         && artifactFilter(`type` = "jar"))
+          val mappings =
+            jcps.jettyClasspath.get.map {
+              path =>
+                if (path.isFile) Nil else (path ** ("*.xml" || "*.class")) x relativeTo(path)
+            }.flatten ++ (home match  {
+              case None=> Seq.empty[(java.io.File,String)]
+              case Some(path) =>
+                file(path) ** "*.xml" x relativeTo(file(path))
+            })
+          embedJettyPrepareTask(path, start.get, cd, deps, Some(mappings), s.log)
+        }
       },
-      embedJettyPrepare <<= embedJettyPrepare dependsOn(prepareWar),
+      embedJettyPrepare <<= embedJettyPrepare.identity,
       packageOptions in embedJetty <<= jettyEmbeddedStartup map { main: Option[String] => Seq(Package.MainClass(main.get)) },
       artifact in embedJetty <<= name(n => Artifact(n, "war", "war")),
       libraryDependencies <++= jettyVersion.apply(determineClasspath(_)),
