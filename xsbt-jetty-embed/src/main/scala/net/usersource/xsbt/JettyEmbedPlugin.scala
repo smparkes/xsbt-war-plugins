@@ -4,11 +4,16 @@ import sbt._
 import sbt.Keys._
 import sbt.Defaults._
 import sbt.Project.Initialize
-import com.github.siasia.WebPlugin.{jettyClasspaths, jettyHome, temporaryWarPath, packageWar}
 
 import sbt.File
 
 trait EmbedPlugin extends Plugin {
+  // From xsbt-web-plugin
+  val jettyClasspaths = TaskKey[Map[Symbol,PathFinder]]("jetty-classpaths")
+  val jettyHome = TaskKey[Option[String]]("jetty-home")
+  val temporaryWarPath = SettingKey[File]("temporary-war-path")
+  val packageWar = TaskKey[File]("package-war")
+  
   def prepareStartupClass( classDir: File, className: String, log :Logger ): Option[(File,String)] = {
     val fileName = className.replace('.','/') + ".class"
     val file = new File(classDir, fileName)
@@ -165,15 +170,16 @@ object JettyEmbedPlugin extends EmbedPlugin {
     embedPrepare(classDir, startup, log, warPath, jettyDeps, jettyMappings)
   }
 
-  private def determineStartup = {
-    jettyVersion map {
-      (version) => {
-        version match {
-          case v: String if v.startsWith("6") => Some(jetty6DefaultStartupClass)
-          case v: String if(v.startsWith("7") || v.startsWith("8")) => Some(jetty7DefaultStartupClass)
-          case _ => None
-        }
-      }
+  private def determineStartup(jettyVersion: String, jettyHome: Option[String]): Option[String] = {
+    val xml = jettyHome match {
+      case None => 
+      case Some(path) =>
+        if ((file(path) / "etc" / "jetty.xml").exists) "XML" else ""
+    }
+    jettyVersion match {
+      case v: String if v.startsWith("6") => Some(jetty6DefaultStartupClass+xml)
+      case v: String if(v.startsWith("7") || v.startsWith("8")) => Some(jetty7DefaultStartupClass+xml)
+      case _ => None
     }
   }
 
@@ -195,7 +201,7 @@ object JettyEmbedPlugin extends EmbedPlugin {
   lazy val jettyEmbedSettings: Seq[Project.Setting[_]] = {
     Seq(
       jettyVersion := "6.1.21",
-      jettyEmbeddedStartup <<= determineStartup,
+      jettyEmbeddedStartup <<= (jettyVersion, jettyHome) map {determineStartup(_,_)},
       configuration := JettyEmbed,
       ivyConfigurations += config("jettyEmbed"),
       embedJettyPrepare <<=
@@ -211,7 +217,7 @@ object JettyEmbedPlugin extends EmbedPlugin {
                                       configurationFilter(name = "jetty"))
                                          && artifactFilter(`type` = "jar"))
           val mappings =
-            jcps.jettyClasspath.get.map {
+            jcps('jetty).get.map {
               path =>
                 if (path.isFile) Nil else (path ** ("*.xml" || "*.class")) x relativeTo(path)
             }.flatten ++ (home match  {

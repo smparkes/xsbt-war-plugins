@@ -31,7 +31,7 @@ object Dependencies {
   val jetty6 = "org.mortbay.jetty" % "jetty" % jetty6Version % "optional"
   val jetty6SSL = "org.mortbay.jetty" % "jetty-sslengine" % jetty6Version % "optional"
 
-  val jetty7Version = "7.3.0.v20110203"
+  val jetty7Version = "7.4.5.v20110725"
   val jetty7 = "org.eclipse.jetty" % "jetty-webapp" % jetty7Version % "optional"
 
   val jetty8Version = "8.0.0.M3"
@@ -89,10 +89,13 @@ object XsbtWarPluginsBuild extends Build {
     val jetty7class =  "jetty7-startup/target/scala-2.8.1.final/classes/net/usersource/jettyembed/jetty7/Startup.class"
     val jetty7 = (new File(jetty7class), "startup/net/usersource/jettyembed/jetty7/Startup.class.precompiled")
 
+    val jetty7XMLclass =  "jetty7-startup/target/scala-2.8.1.final/classes/net/usersource/jettyembed/jetty7/StartupXML.class"
+    val jetty7XML = (new File(jetty7XMLclass), "startup/net/usersource/jettyembed/jetty7/StartupXML.class.precompiled")
+
     val tomcat7class = "tomcat7-startup/target/scala-2.8.1.final/classes/net/usersource/tomcatembed/tomcat7/Startup.class"
     val tomcat7 = (new File(tomcat7class), "startup/net/usersource/tomcatembed/tomcat7/Startup.class.precompiled")
 
-    Seq(jetty6,jetty7,tomcat7)
+    Seq(jetty6,jetty7,jetty7XML,tomcat7)
   }
 
   lazy val jettyEmbed = Project("jetty-embed", file("xsbt-jetty-embed"), 
