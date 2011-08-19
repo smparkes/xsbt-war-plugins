@@ -86,8 +86,10 @@ public class StartupXML {
 
     try {
       server.start();
-      System.in.read();
-      server.stop();
+      if (false) {
+          System.in.read();
+          server.stop();
+      }
       server.join();
     } catch (Throwable t) {
       t.printStackTrace();
