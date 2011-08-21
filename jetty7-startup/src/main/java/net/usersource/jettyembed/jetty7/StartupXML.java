@@ -36,7 +36,7 @@ public class StartupXML {
       System.err.println(e);
       System.exit(-1);
     }
-    System.err.println(context.getTempDirectory());
+    // System.err.println(context.getTempDirectory());
     String jetty_home = System.getProperty("jetty.home");
     if (jetty_home == null) {
       jetty_home = "" + context.getTempDirectory() +
