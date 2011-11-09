@@ -5,7 +5,7 @@ import sbt.Keys._
 object BuildSettings {
   val buildOrganization = "net.usersource"
   val buildVersion      = "0.3"
-  val buildScalaVersion = "2.8.1"
+  val buildScalaVersion = "2.9.1"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -21,7 +21,7 @@ object Resolvers {
 
 object Dependencies {
 
-  val sbtVersion      = "0.10.1"
+  val sbtVersion      = "0.11.1"
   val sbtIo           = "org.scala-tools.sbt" %% "io" % sbtVersion
   val sbtLogging      = "org.scala-tools.sbt" %% "logging" % sbtVersion
   val sbtClasspath    = "org.scala-tools.sbt" %% "classpath" % sbtVersion
@@ -103,7 +103,9 @@ object XsbtWarPluginsBuild extends Build {
       name := "xsbt-jetty-embed",
       sbtPlugin := true,
       resolvers += webPlugin,
-      libraryDependencies += "com.github.siasia" %% "xsbt-web-plugin" % "0.1.1-0.10.1",
+      // libraryDependencies += "com.github.siasia" %% "xsbt-web-plugin" % "0.1.2-0.11.1",
+      libraryDependencies +=
+        Defaults.sbtPluginExtra("com.github.siasia" %% "xsbt-web-plugin" % "0.1.2", "0.11.1", "2.9.1"),
       libraryDependencies ++= commonDependencies,
       (mappings in packageBin in Compile) <++= ((resourceManaged in Compile) map { dir => copyClassFiles( dir ) }) map { x => x }
     )
