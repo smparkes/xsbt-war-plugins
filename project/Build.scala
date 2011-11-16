@@ -83,16 +83,16 @@ object XsbtWarPluginsBuild extends Build {
 
  
   private def copyClassFiles(base: File):Seq[(File,String)] = {
-    val jetty6class = "jetty6-startup/target/scala-2.8.1.final/classes/net/usersource/jettyembed/jetty6/Startup.class"
+    val jetty6class = "jetty6-startup/target/scala-2.9.1/classes/net/usersource/jettyembed/jetty6/Startup.class"
     val jetty6 = (new File(jetty6class), "startup/net/usersource/jettyembed/jetty6/Startup.class.precompiled")
 
-    val jetty7class =  "jetty7-startup/target/scala-2.8.1.final/classes/net/usersource/jettyembed/jetty7/Startup.class"
+    val jetty7class =  "jetty7-startup/target/scala-2.9.1/classes/net/usersource/jettyembed/jetty7/Startup.class"
     val jetty7 = (new File(jetty7class), "startup/net/usersource/jettyembed/jetty7/Startup.class.precompiled")
 
-    val jetty7XMLclass =  "jetty7-startup/target/scala-2.8.1.final/classes/net/usersource/jettyembed/jetty7/StartupXML.class"
+    val jetty7XMLclass =  "jetty7-startup/target/scala-2.9.1/classes/net/usersource/jettyembed/jetty7/StartupXML.class"
     val jetty7XML = (new File(jetty7XMLclass), "startup/net/usersource/jettyembed/jetty7/StartupXML.class.precompiled")
 
-    val tomcat7class = "tomcat7-startup/target/scala-2.8.1.final/classes/net/usersource/tomcatembed/tomcat7/Startup.class"
+    val tomcat7class = "tomcat7-startup/target/scala-2.9.1/classes/net/usersource/tomcatembed/tomcat7/Startup.class"
     val tomcat7 = (new File(tomcat7class), "startup/net/usersource/tomcatembed/tomcat7/Startup.class.precompiled")
 
     Seq(jetty6,jetty7,jetty7XML,tomcat7)
@@ -103,11 +103,10 @@ object XsbtWarPluginsBuild extends Build {
       name := "xsbt-jetty-embed",
       sbtPlugin := true,
       resolvers += webPlugin,
-      // libraryDependencies += "com.github.siasia" %% "xsbt-web-plugin" % "0.1.2-0.11.1",
       libraryDependencies +=
         Defaults.sbtPluginExtra("com.github.siasia" %% "xsbt-web-plugin" % "0.1.2", "0.11.1", "2.9.1"),
       libraryDependencies ++= commonDependencies,
-      (mappings in packageBin in Compile) <++= ((resourceManaged in Compile) map { dir => copyClassFiles( dir ) }) map { x => x }
+      mappings in (Compile, packageBin) <++= ((resourceManaged in Compile) map { dir => copyClassFiles( dir ) }) map { x => x }
     )
   ) dependsOn(jetty6Startup,jetty7Startup,tomcat7Startup)
 
